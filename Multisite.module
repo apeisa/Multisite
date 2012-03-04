@@ -1,0 +1,82 @@
+<?php
+
+/**
+ *
+ * Multisite module for Processwire
+ * (C) 2012 Antti Peisa, Avoine Oy
+ *
+ * ProcessWire 2.x
+ * Copyright (C) 2010 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class Multisite extends WireData implements Module, ConfigurableModule {
+
+	public static function getModuleInfo() {
+
+		return array(
+			'title' => 'Multisite',
+			'version' => 001,
+			'summary' => 'Allows multiple sites with different domains run from single PW-site and database.',
+			'singular' => true,
+			'autoload' => true,
+			);
+	}
+
+	public function init() {
+
+		$subdomains = explode("\n", strtolower($this->subdomains));
+
+		foreach($subdomains as $subdomain) {
+
+			$httpHost = strtolower(wire('config')->httpHost);
+			if(strpos($httpHost, $subdomain) !== false) {
+
+				$this->subdomain = $subdomain;
+
+				// change path like /about/contact/ to /campaign.com/about/contact/
+				$_GET['it'] = "/{$subdomain}/" . ltrim($_GET['it'], '/');
+
+				// hook for path method to make path() and url() methods context aware
+				$this->addHookAfter('Page::path', $this, 'modifyPath');
+
+				break;
+			}
+
+			// If subdomain is visible on url, we might wanna redirect
+			if(strpos($_GET['it'],$subdomain) !== false) {
+				// We don't redirect if one has editing access (because user would need to login on new domain also)
+				$page = $this->pages->get("/". $_GET['it']);
+				if(!$page->editable()) {
+					$_GET['it'] = str_replace("{$subdomain}/", "", $_GET['it']);
+					$this->session->redirect('http://' . $subdomain . '/' . $_GET['it']);
+				}
+			}
+
+		}
+	}
+
+	public function modifyPath($event) {
+		$event->return = str_replace("{$this->subdomain}/", '', $event->return);;
+	}
+
+	static public function getModuleConfigInputfields(array $data) {
+
+		$fields = new InputfieldWrapper();
+		$modules = wire('modules');
+
+		$field = $modules->get("InputfieldTextarea");
+		$field->name = "subdomains";
+		$field->label = "Other sites running from same install";
+		$field->description = "Add each domain for their own line. Don't add http or https, just simple domain like: www.example.com tai campaign.example.com";
+		$field->notes = "IMPORTANT: create homepage for each of these domains right on the root. Name should be exactly same as the domain you use here.";
+		$field->attr('value', $data['subdomains']);
+		$fields->add($field);
+
+		return $fields;
+	}
+}
