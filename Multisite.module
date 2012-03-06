@@ -29,9 +29,10 @@ class Multisite extends WireData implements Module, ConfigurableModule {
 
 	public function init() {
 
-		$subdomains = explode("\n", strtolower($this->subdomains));
+		$this->subdomainsArray = explode("\n", strtolower($this->subdomains));
+		$this->it = ltrim($_GET['it'], '/');
 
-		foreach($subdomains as $subdomain) {
+		foreach($this->subdomainsArray as $subdomain) {
 
 			$httpHost = strtolower(wire('config')->httpHost);
 			if(strpos($httpHost, $subdomain) !== false) {
@@ -46,22 +47,29 @@ class Multisite extends WireData implements Module, ConfigurableModule {
 
 				break;
 			}
+		}
+	}
 
-			// If subdomain is visible on url, we might wanna redirect
-			if(strpos($_GET['it'],$subdomain) !== false) {
-				// We don't redirect if one has editing access (because user would need to login on new domain also)
-				$page = $this->pages->get("/". $_GET['it']);
-				if(!$page->editable()) {
-					$_GET['it'] = str_replace("{$subdomain}/", "", $_GET['it']);
-					$this->session->redirect('http://' . $subdomain . '/' . $_GET['it']);
-				}
-			}
+	public function ready() {
+		// if $this->subdomain was valid in init(), then no need to do more here.
+		if($this->subdomain) return;
 
+		$this->subdomain = $this->page->rootParent->name;
+
+		// if rootParent->name isn't a subdomain, then no need to continue
+		if(!in_array($this->subdomain, $this->subdomainsArray)) return;
+
+		// if subdomain is visible on url, we might wanna redirect
+		if(strpos($this->it, $this->subdomain) === 0 && !$this->page->editable()) {
+			$http = ($this->config->https) ? "https://" : "http://";
+			$url = $http . $this->subdomain;
+			$url .= str_replace("/{$this->subdomain}/", '/', $this->page->url);
+			$this->session->redirect($url);
 		}
 	}
 
 	public function modifyPath($event) {
-		$event->return = str_replace("{$this->subdomain}/", '', $event->return);;
+		$event->return = str_replace("{$this->subdomain}/", '', $event->return);
 	}
 
 	static public function getModuleConfigInputfields(array $data) {
