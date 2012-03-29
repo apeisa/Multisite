@@ -33,9 +33,15 @@ class Multisite extends WireData implements Module, ConfigurableModule {
 		$this->it = ltrim($_GET['it'], '/');
 
 		foreach($this->subdomainsArray as $subdomain) {
+			$subdomain = trim($subdomain);
+			$config = wire('config');
+
 
 			$httpHost = strtolower(wire('config')->httpHost);
 			if(strpos($httpHost, $subdomain) !== false) {
+
+				$log = new FileLog($config->paths->logs . 'my-log.txt');
+				$log->save("Init: $subdomain");
 
 				$this->subdomain = $subdomain;
 
