@@ -42,7 +42,7 @@ class Multisite extends WireData implements Module, ConfigurableModule {
 				$this->subdomain = $subdomain;
 
 				// change path like /about/contact/ to /campaign.com/about/contact/
-				$_GET['it'] = (isset($_GET['id'])) ? "/{$subdomain}/" . ltrim($_GET['it'], '/') : "/{$subdomain}/";
+				$_GET['it'] = (isset($_GET['it'])) ? "/{$subdomain}/" . ltrim($_GET['it'], '/') : "/{$subdomain}/";
 
 				// hook for path method to make path() and url() methods context aware
 				$this->addHookAfter('Page::path', $this, 'modifyPath');
